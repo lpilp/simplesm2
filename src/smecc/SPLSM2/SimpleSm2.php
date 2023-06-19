@@ -1,8 +1,11 @@
 <?php
+
 namespace Lpilp\Splsm2\smecc\SPLSM2;
 
 use Exception;
 
+define('C1C3C2', 1);
+define('C1C2C3', 2);
 class SimpleSm2
 {
     protected $p;
@@ -18,12 +21,12 @@ class SimpleSm2
         '21fbd478026e2d668e3570e514de0d312e443d1e294c1ca785dfbfb5f74de225',
         '04e27c3780e7069bda7082a23a489d77587ce309583ed99253f66e1d9833ed1a1d0b5ce86dc6714e9974cf258589139d7b1855e8c9fa2f2c1175ee123a95a23e9b'
     );
-    
+
     protected $privateKey;
     protected $publicKey;
     protected $sm3;
     protected $randSign = true; // true则同一字符串，同样密钥，每次签名不一样，false是每次签名都一样
-    protected $randEnc = true;  // true则同一字符串，同样密钥，每次签名不一样，false是每次签名都一样
+    protected $randEnc = true;  // true则同一字符串，同样密钥，每次加密不一样，false是每次加密都一样
     protected $fixForeignKey = false; //中间了椭圆固定，在加密时减少生成密码对，性能有所提升，安全性有所下降，
     function __construct()
     {
@@ -67,9 +70,10 @@ class SimpleSm2
         return $publicKey;
     }
     // 生成标准的 base64 的 asn1(r,s)签名
-    public function sign($document, $prikey, $publicKey = null, $userId = null){
-        list($r,$s) = $this->sign_raw($document, $prikey, $publicKey, $userId);
-        return Sm2Asn1::rs_2_asn1($r,$s);
+    public function sign($document, $prikey, $publicKey = null, $userId = null)
+    {
+        list($r, $s) = $this->sign_raw($document, $prikey, $publicKey, $userId);
+        return Sm2Asn1::rs_2_asn1($r, $s);
     }
     /**
      * 
@@ -122,10 +126,10 @@ class SimpleSm2
         }
     }
     // 标准的asn1 base64签名验签
-    public function verify($document, $publicKey, $sign, $userId = null){
-        list($hexR,$hexS) = Sm2Asn1::asn1_2_rs($sign);
+    public function verify($document, $publicKey, $sign, $userId = null)
+    {
+        list($hexR, $hexS) = Sm2Asn1::asn1_2_rs($sign);
         return $this->verifty_sign_raw($document, $publicKey, $hexR, $hexS, $userId);
-
     }
     /**
      * Undocumented function
@@ -181,27 +185,49 @@ class SimpleSm2
         return gmp_strval($v, 16) == $hexR;
     }
 
-
+    /**
+     *
+     * @param string hex $publicKey
+     * @param string bin $data
+     * @param int $model
+     * @return string hex
+     */
+    public function encrypt($publicKey, $data, $model = C1C3C2)
+    {
+        list($c1, $c3, $c2) = $this->encrypt_raw($publicKey, $data);
+        if ($model == C1C3C2) {
+            return $c1 . $c3 . $c2;
+        } else if ($model == C1C2C3) {
+            return $c1 . $c2 . $c3;
+        }
+        return $c1 . $c3 . $c2;
+    }
+    /**
+     *
+     * @param string hex $publicKey
+     * @param string bin $data
+     * @return array <string>
+     */
     public function encrypt_raw($publicKey, $data)
     {
         list($pubX, $pubY) = $this->_get_pub_xy($publicKey);
-        $point = new Sm2Point($pubX,$pubY);
+        $point = new Sm2Point($pubX, $pubY);
         $t = '';
         $count = 0;
         while (!$t) {
             $count++;
-            if($count>5){
+            if ($count > 5) {
                 throw new Exception('bad kdf '); // 这处一般是生成的$k问题，5次都有问题，这运气差的可以买双色球了
             }
 
-            if($this->fixForeignKey) { //使用固定的第中间椭圆
-                list($x1,$y1) = $this->_get_pub_xy($this->foreignKey[1],false);
-                $k = gmp_init($this->foreignKey[0],16);
+            if ($this->fixForeignKey) { //使用固定的第中间椭圆
+                list($x1, $y1) = $this->_get_pub_xy($this->foreignKey[1], false);
+                $k = gmp_init($this->foreignKey[0], 16);
 
-                $x1 = $this->format_hex($x1,64);// 不足前面补0
-                $y1 = $this->format_hex($y1,64);// 不足前面补0
+                $x1 = $this->format_hex($x1, 64); // 不足前面补0
+                $y1 = $this->format_hex($y1, 64); // 不足前面补0
             } else {
-                $k = $this->_get_forign_prikey($data.'_'.$count);
+                $k = $this->_get_forign_prikey($data . '_' . $count);
                 //dump($k);
                 //$k = gmp_init('104953050056413721046883757640585885959005820148174417356964987920496726278110',10);
                 $kG = $point->mul($k);
@@ -222,21 +248,36 @@ class SimpleSm2
         return array($c1, $c3, $c2);
     }
 
-
+    /**
+     *
+     * @param string hex $prikey
+     * @param string $encryptData
+     * @param int $model
+     * @param boolean $trim
+     * @return string
+     */
+    public function decrypt($prikey, $encryptData, $model = C1C3C2, $trim = true)
+    {
+        if (strlen($prikey) == 66 && substr($prikey, 0, 2) == '00') {
+            $prikey = substr($prikey, 2); // 个别的key 前面带着00
+        }
+        list($c1, $c3, $c2) = $this->_get_c123($encryptData, $model, $trim);
+        return $this->decrypt_raw($prikey, $c1, $c3, $c2);
+    }
     /**
      * sm2非对称解密
      *
-     * @param string $prikey 私钥明文 hex
+     * @param string $prikey 私钥明文 hex len: 64
      * @param string  $c1 hex
      * @param string  $c3 hex
      * @param string  $c2 hex
      * @return string  decode($c2) 解密结果
      */
-    public function decrypt_raw($prikey, $c1,$c3,$c2)
+    public function decrypt_raw($prikey, $c1, $c3, $c2)
     {
         list($x1, $y1) = $this->_get_pub_xy($c1);
-        $point = new Sm2Point($x1,$y1);
-        $dbC1 = $point->mul(gmp_init($prikey,16), false);
+        $point = new Sm2Point($x1, $y1);
+        $dbC1 = $point->mul(gmp_init($prikey, 16), false);
         $x2 = gmp_strval($dbC1->getX(), 16);
         $y2 = gmp_strval($dbC1->getY(), 16);
         $x2 = pack('H*', str_pad($x2, 64, 0, STR_PAD_LEFT));
@@ -272,7 +313,6 @@ class SimpleSm2
         return $res;
     }
     /**
-     * Undocumented function
      *
      * @param string $message
      * @param boolean $raw
@@ -284,6 +324,7 @@ class SimpleSm2
         // 有些版本的PHP直接支持sm3
         // return openssl_digest($message,'sm3',$raw);
     }
+
     /**
      * hex 用0补齐一定的位置
      *
@@ -295,6 +336,7 @@ class SimpleSm2
     {
         return str_pad($hex, $count, "0", STR_PAD_LEFT);
     }
+
     /**
      * 采用gmp自带的函数随机生成私钥，gmp_random_bits需要5.6.3才有
      * 也可其他随机函数生成
@@ -305,7 +347,7 @@ class SimpleSm2
     public function rand_prikey($numBits = 256)
     {
         if (!function_exists('gmp_random_bits')) {
-            return $this->_get_forign_prikey('loveyou'. microtime());
+            return $this->_get_forign_prikey('loveyou' . microtime());
         }
         $value = gmp_random_bits($numBits);
         $mask = gmp_sub(gmp_pow(2, $numBits), 1);
@@ -313,6 +355,7 @@ class SimpleSm2
 
         return $integer;
     }
+
     /**
      * gmp 转 hex,并用0补齐位数
      *
@@ -341,10 +384,7 @@ class SimpleSm2
         return $hex;
     }
 
-
-
     /**
-     * Undocumented function
      *
      * @param string $document
      * @param string $publicKey
@@ -442,7 +482,8 @@ class SimpleSm2
         $this->randEnc  = $flag;
     }
 
-    public function set_fix_foreignkey_flag($flag = true){
+    public function set_fix_foreignkey_flag($flag = true)
+    {
         $this->fixForeignKey = $flag;
     }
     public function str2gmp($string)
@@ -452,7 +493,8 @@ class SimpleSm2
         return gmp_init($hex[1], 16);
     }
 
-    protected function _get_pub_xy($publicKey,$rtGmp = true){
+    protected function _get_pub_xy($publicKey, $rtGmp = true)
+    {
         $plen = strlen($publicKey);
         if ($plen == 130 && substr($publicKey, 0, 2) == '04') {
             $pubX = substr($publicKey, 2, 64);
@@ -463,10 +505,26 @@ class SimpleSm2
         } else {
             throw new Exception("bad publickey $publicKey");
         }
-        if($rtGmp){
-            return array(gmp_init($pubX,16),gmp_init($pubY,16));
+        if ($rtGmp) {
+            return array(gmp_init($pubX, 16), gmp_init($pubY, 16));
         }
         // var_dump($publicKey,$pubX, $pubY,'==============');
         return array($pubX, $pubY);
+    }
+    protected function _get_c123($encryptData, $model = C1C3C2, $trim = true)
+    {
+        if (substr($encryptData, 0, 2) == '04' && $trim) {
+            $encryptData = substr($encryptData, 2);
+        }
+        $c1Length = 128;
+        $c1 = substr($encryptData, 0, $c1Length);
+        if ($model == C1C3C2) {
+            $c3 = substr($encryptData, $c1Length, 64);
+            $c2 = substr($encryptData, $c1Length + strlen($c3));
+        } else {
+            $c3 = substr($encryptData, -64);
+            $c2 = substr($encryptData, $c1Length,  -64);
+        }
+        return array($c1, $c3, $c2);
     }
 }

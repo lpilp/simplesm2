@@ -25,11 +25,22 @@ $ssm2->set_fix_foreignkey_flag(true);
 // var_dump($publicKey);die();
 list($c1,$c3,$c2) = $ssm2->encrypt_raw($publicKey, $document);
 
-var_dump($c1,$c3,$c2);die();
+// var_dump($c1,$c3,$c2);die();
 $val = $ssm2->decrypt_raw($privateKey, $c1,$c3,$c2);
 var_dump($val);
-list($r, $s) = $ssm2->sign_raw($document, $privateKey, $publicKey,$userId);
 
+$document = 'whatareyoudoing now';
+$ed = $ssm2->encrypt($publicKey,$document);
+// var_dump($ed);
+$val = $ssm2->decrypt($privateKey,$ed);
+
+var_dump($val);
+// die();
+
+$ssm2->set_rand_sign_flag(false);
+$ssm2->set_rand_enc_flag(false);
+list($r, $s) = $ssm2->sign_raw($document, $privateKey, $publicKey,$userId);
+var_dump($r, $s);
 list($r, $s) = $ssm2->sign_raw($document, $privateKey, null,$userId);
 var_dump($r, $s);
 $result = $ssm2->verifty_sign_raw($document,$publicKey,$r,$s,$userId);
