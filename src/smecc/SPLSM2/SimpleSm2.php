@@ -427,10 +427,13 @@ class SimpleSm2
     {
         // 要支持php5的话，没有什么好函数了，如果是php7或以上或以使用 
         // $s = random_bytes(64) 或  this->rand_prikey(int bits=256)  代替
+        // 如个人使用，请更新为自己相应的盐值
+        $s1 = 'S1';
+        $s2 = 'S2';
         if ($this->randSign || $this->randEnc) { // 从document ==>k 变化
-            $s = substr(openssl_digest('S1' . $document . microtime(), 'sha1'), 1, 32) . md5($document . microtime() . 'S2');
+            $s = substr(openssl_digest($s1  . $document . microtime(), 'sha1'), 1, 32) . md5($document . microtime() . $s2);
         } else {
-            $s = substr(openssl_digest('S1' . $document, 'sha1'), 1, 32) . md5($document . 'S2');
+            $s = substr(openssl_digest($s1  . $document, 'sha1'), 1, 32) . md5($document . $s2);
         }
 
         $s = strtolower($s);
