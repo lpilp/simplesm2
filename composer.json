@@ -9,7 +9,8 @@
     "authors": [
         {
             "name": "lpilp",
-            "email": "lpilp@126.com"
+            "email": "lpilp@126.com",
+            "wx": "xiaopz129"
         }
     ],
     "require": {
