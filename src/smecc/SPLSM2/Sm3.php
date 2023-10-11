@@ -1,6 +1,8 @@
 <?php
 namespace Lpilp\Splsm2\smecc\SPLSM2;
 
+use Exception;
+
 /**
  * 在5.x的版本中不支持openssl系列的sm3 使用lizhichao童鞋的sm3
  * 
@@ -33,7 +35,30 @@ class Sm3
         return bin2hex($vr);
 
     }
+    function hmac($key, $data) 
+    {
+        $blockSize = 64;
+        
+        if (strlen($key) > $blockSize || strlen($key) < 16) {
+            throw new Exception("please check the length of key 16 ~ 64");
+        }
+        
+        $key = str_pad($key, $blockSize, chr(0x00));
+        $innerPad = str_repeat(chr(0x36), $blockSize);
+        $outerPad = str_repeat(chr(0x5C), $blockSize);
+      
+        $innerKey = $key ^ $innerPad;
+        $inner = $innerKey . $data;
+        $hash = $this->digest($inner, true);
 
+        $outerKey = $key ^ $outerPad;
+
+        $outer = $outerKey . $hash;
+
+        $hmac = $this->digest($outer);
+      
+        return $hmac;
+    }
     private function getK($l)
     {
         $v = $l % $this->LEN;
