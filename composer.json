@@ -1,6 +1,6 @@
 {
     "name": "lpilp/splsm2",
-    "description": "simple sm2, 基于 https://github.com/lpilp/phpsm2sm3sm4 的简化版本",
+    "description": "simple sm2",
     "autoload": {
         "psr-4": {
             "Lpilp\\Splsm2\\": "src/"
@@ -9,7 +9,8 @@
     "authors": [
         {
             "name": "lpilp",
-            "email": "lpilp@126.com"
+            "email": "lpilp@126.com",
+            "wx": "xiaopz129"
         }
     ],
     "require": {
