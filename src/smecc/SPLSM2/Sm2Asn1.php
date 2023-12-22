@@ -165,8 +165,8 @@ class Sm2Asn1
      */
     public static function asn1_cccc($c1x, $c1y, $c3, $c2, $outFormat = 'hex')
     {
-        $binc1x = self::_format_int_pad($c1x); // c1为椭圆点，得是bigint
-        $binc1y = self::_format_int_pad($c1y);
+        $binc1x = self::_format_int_pad(hex2bin($c1x)); // c1为椭圆点，得是bigint
+        $binc1y = self::_format_int_pad(hex2bin($c1y));
         $binc3 = hex2bin($c3);
         $binc2 = hex2bin($c2);
         $c1xEncoded = chr(2) . strlen($binc1x) . $binc1x; // c1x  64 hex
