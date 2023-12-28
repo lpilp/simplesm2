@@ -169,8 +169,8 @@ class Sm2Asn1
         $binc1y = self::_format_int_pad(hex2bin($c1y));
         $binc3 = hex2bin($c3);
         $binc2 = hex2bin($c2);
-        $c1xEncoded = chr(2) . strlen($binc1x) . $binc1x; // c1x  64 hex
-        $c1yEncoded = chr(2) . strlen($binc1y) . $binc1y; // c1y 64 hex
+        $c1xEncoded = chr(2) . chr(strlen($binc1x)) . $binc1x; // c1x  64 hex
+        $c1yEncoded = chr(2) . chr(strlen($binc1y)) . $binc1y; // c1y 64 hex
         $c3Encoded = chr(4) . self::_encode_length(strlen($binc3)) . $binc3;  // c3的长度是固定的,可不用长宽度的方式求宽度，但有些就要c2 放前面呢，兼容下
         $c2Encoded = chr(4) . self::_encode_length(strlen($binc2)) . $binc2;
         $cccc = $c1xEncoded . $c1yEncoded . $c3Encoded . $c2Encoded;
