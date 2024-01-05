@@ -100,7 +100,7 @@ class Sm2Asn1
             case self::TYPE_BOOLEAN:
                 return (bool)ord($content[0]);
             case self::TYPE_INTEGER:
-                return bin2hex($content);
+                return ltrim(bin2hex($content),'0');
             case self::TYPE_OCTET_STRING:
                 return bin2hex($content);
             case self::TYPE_BIT_STRING:
