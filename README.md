@@ -3,7 +3,3 @@
 ## 要求
   * php >=5.6  64位版本
   * 打开gmp组件 检测方法  php -m | grep gmp 
-
-
-## Stargazers over time
-[![Stargazers over time](https://starchart.cc/oljc/arco-admin.svg?variant=adaptive)](https://starchart.cc/oljc/arco-admin)
