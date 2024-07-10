@@ -1,10 +1,13 @@
 <?php
 namespace Lpilp\Splsm2\smecc\SPLSM2;
+
 /**
  * 
  * 针对签名，加解密只有一层 asn1的解析，不做其他类型的解析，
  */
-define('MAXLEVEL', 2);  // 简单解析，只解析两层就够了
+
+const  MAXLEVEL = 2;  // 简单解析，只解析两层就够了
+
 class Sm2Asn1
 {
     const CLASS_UNIVERSAL        = 0;
@@ -50,7 +53,7 @@ class Sm2Asn1
     /**
      * 解析简单的asn1
      *
-     * @param string bin $data
+     * @param string $data bin
      * @param integer $level
      * @return array <string>
      */
@@ -125,8 +128,8 @@ class Sm2Asn1
     }
     /**
      * 
-     * @param string hex bigint $r
-     * @param string hex bigint $s
+     * @param string $r hex bigint
+     * @param string $s hex bigint
      * @return string base64  一般约定签名用bas64, 加解密用hex
      */
     public static function rs_2_asn1($r, $s, $outFormat = 'base64')
@@ -157,10 +160,10 @@ class Sm2Asn1
     /**
      * 
      *
-     * @param string hex bigint $c1x
-     * @param string hex bigint $c1y
-     * @param string hex bin $c3
-     * @param string hex bin $c2
+     * @param string $c1x hex bigint
+     * @param string $c1y hex bigint
+     * @param string $c3 hex bin
+     * @param string $c2 hex bin
      * @return string hex 一般约定签名用bas64, 加解密用hex
      */
     public static function asn1_cccc($c1x, $c1y, $c3, $c2, $outFormat = 'hex')

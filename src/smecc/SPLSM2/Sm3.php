@@ -1,7 +1,7 @@
 <?php
 namespace Lpilp\Splsm2\smecc\SPLSM2;
 
-use Exception;
+use RuntimeException;
 
 /**
  * 在5.x的版本中不支持openssl系列的sm3 使用lizhichao童鞋的sm3
@@ -12,41 +12,41 @@ use Exception;
 
 class Sm3
 {
-    private $IV      = '7380166f4914b2b9172442d7da8a0600a96f30bc163138aae38dee4db0fb0e4e';
-    private $LEN     = 512;
+    private $IV = '7380166f4914b2b9172442d7da8a0600a96f30bc163138aae38dee4db0fb0e4e';
+    private $LEN = 512;
     private $STR_LEN = 64;
 
-    public function digest($str,$raw = false)
+    public function digest($str, $raw = false)
     {
-        $l   = strlen($str) * 8;
-        $k   = $this->getK($l);
-        $bt  = $this->getB($k);
+        $l = strlen($str) * 8;
+        $k = $this->getK($l);
+        $bt = $this->getB($k);
         $str = $str . $bt . pack('J', $l);
 
         $count = strlen($str);
-        $l     = $count / $this->STR_LEN;
-        $vr    = hex2bin($this->IV);
+        $l = $count / $this->STR_LEN;
+        $vr = hex2bin($this->IV);
         for ($i = 0; $i < $l; $i++) {
             $vr = $this->cf($vr, substr($str, $i * $this->STR_LEN, $this->STR_LEN));
         }
-        if($raw){
+        if ($raw) {
             return $vr;
         }
         return bin2hex($vr);
-
     }
-    function hmac($key, $data) 
+
+    function hmac($key, $data)
     {
         $blockSize = 64;
-        
+
         if (strlen($key) > $blockSize || strlen($key) < 16) {
-            throw new Exception("please check the length of key 16 ~ 64");
+            throw new RuntimeException("please check the length of key 16 ~ 64");
         }
-        
+
         $key = str_pad($key, $blockSize, chr(0x00));
         $innerPad = str_repeat(chr(0x36), $blockSize);
         $outerPad = str_repeat(chr(0x5C), $blockSize);
-      
+
         $innerKey = $key ^ $innerPad;
         $inner = $innerKey . $data;
         $hash = $this->digest($inner, true);
@@ -55,10 +55,9 @@ class Sm3
 
         $outer = $outerKey . $hash;
 
-        $hmac = $this->digest($outer);
-      
-        return $hmac;
+        return $this->digest($outer);
     }
+
     private function getK($l)
     {
         $v = $l % $this->LEN;
@@ -76,29 +75,28 @@ class Sm3
 
     public function signFile($file)
     {
-        $l  = filesize($file) * 8;
-        $k  = $this->getK($l);
+        $l = filesize($file) * 8;
+        $k = $this->getK($l);
         $bt = $this->getB($k) . pack('J', $l);
 
-        $hd  = fopen($file, 'r');
-        $vr  = hex2bin($this->IV);
+        $hd = fopen($file, 'r');
+        $vr = hex2bin($this->IV);
         $str = fread($hd, $this->STR_LEN);
         if ($l > $this->LEN - $this->STR_LEN - 1) {
             do {
-                $vr  = $this->cf($vr, $str);
+                $vr = $this->cf($vr, $str);
                 $str = fread($hd, $this->STR_LEN);
             } while (!feof($hd));
         }
 
-        $str   = $str . $bt;
+        $str = $str . $bt;
         $count = strlen($str) * 8;
-        $l     = $count / $this->LEN;
+        $l = $count / $this->LEN;
         for ($i = 0; $i < $l; $i++) {
             $vr = $this->cf($vr, substr($str, $i * $this->STR_LEN, $this->STR_LEN));
         }
         return bin2hex($vr);
     }
-
 
     private function t($i)
     {
@@ -133,19 +131,18 @@ class Sm3
             $ss2 = $ss1 ^ $this->lm($a, 12);
             $tt1 = ($this->ff($i, $a, $b, $c) + $d + $ss2 + $wr1[$i]) & 0xffffffff;
             $tt2 = ($this->gg($i, $e, $f, $g) + $h + $ss1 + $wr[$i]) & 0xffffffff;
-            $d   = $c;
-            $c   = $this->lm($b, 9);
-            $b   = $a;
-            $a   = $tt1;
-            $h   = $g;
-            $g   = $this->lm($f, 19);
-            $f   = $e;
-            $e   = $this->p0($tt2);
+            $d = $c;
+            $c = $this->lm($b, 9);
+            $b = $a;
+            $a = $tt1;
+            $h = $g;
+            $g = $this->lm($f, 19);
+            $f = $e;
+            $e = $this->p0($tt2);
         }
 
         return pack('N*', $a, $b, $c, $d, $e, $f, $g, $h) ^ $ai;
     }
-
 
     private function ff($j, $x, $y, $z)
     {
@@ -156,7 +153,6 @@ class Sm3
     {
         return $j < 16 ? $x ^ $y ^ $z : ($x & $y) | (~$x & $z);
     }
-
 
     private function lm($a, $n)
     {
@@ -172,5 +168,4 @@ class Sm3
     {
         return $x ^ $this->lm($x, 15) ^ $this->lm($x, 23);
     }
-
 }

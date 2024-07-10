@@ -1,8 +1,10 @@
 <?php
 namespace Lpilp\Splsm2\smecc\SPLSM2;
 
-class Sm2Ecc {
-    static function  get_params(){
+class Sm2Ecc
+{
+    static function get_params()
+    {
         return array(
             'p' => gmp_init("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF", 16),
             'a' => gmp_init("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC", 16),
@@ -10,9 +12,7 @@ class Sm2Ecc {
             'n' => gmp_init("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123", 16),
             'gx' => gmp_init("32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7", 16),
             'gy' => gmp_init("BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0", 16),
-            'size'=>256
+            'size' => 256
         );
     }
-
 }
-
