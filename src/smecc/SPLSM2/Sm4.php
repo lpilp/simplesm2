@@ -4,6 +4,8 @@
  */
 namespace Lpilp\Splsm2\smecc\SPLSM2;
 
+use RuntimeException;
+
 class Sm4
 {
     private $ck = [
@@ -40,47 +42,34 @@ class Sm4
 
     private $rk = [];
 
-    private $b = '';
-
     private $len = 16;
-
 
     /**
      * Sm4 constructor.
-     * @param string $key 秘钥长度16位
-     * @param string $b 不是16的倍数 需要的补码
-     * @throws \Exception
+     * @param string $key 秘钥，长度必须是 16 字节
      */
-    public function __construct($key, $b = ' ')
+    public function __construct($key)
     {
         $this->ck16($key);
         $this->crk($key);
     }
 
-    private function dd(&$data)
-    {
-        $n    = strlen($data) % $this->len;
-        $data = $data . str_repeat($this->b, $n);
-    }
-
     private function ck16($str)
     {
         if (strlen($str) !== $this->len) {
-            throw new \Exception('秘钥长度为16位');
+            throw new RuntimeException('block size must be 16');
         }
     }
 
-    private function add($v)
+    protected function increaseCounter($v)
     {
         $arr = unpack('N*', $v);
         $max = 0xffffffff;
-        $j   = 1;
         for ($i = 4; $i > 0; $i--) {
-            if ($arr[$i] > $max - $j) {
-                $j       = 1;
+            if ($arr[$i] > $max - 1) {
                 $arr[$i] = 0;
             } else {
-                $arr[$i] += $j;
+                $arr[$i] += 1;
                 break;
             }
         }
@@ -88,10 +77,9 @@ class Sm4
     }
 
     /**
-     * @param string $str 加密字符串
-     * @param string $iv 初始化字符串16位
+     * @param string $str 需解密的数据
+     * @param string $iv 初始向量
      * @return string
-     * @throws \Exception
      */
     public function deDataCtr($str, $iv)
     {
@@ -99,58 +87,53 @@ class Sm4
     }
 
     /**
-     * @param string $str 加密字符串
-     * @param string $iv 初始化字符串16位
+     * @param string $str 需加密的数据
+     * @param string $iv 初始向量
      * @return string
-     * @throws \Exception
      */
     public function enDataCtr($str, $iv)
     {
         $this->ck16($iv);
         $r = '';
-        $this->dd($str);
         $l = strlen($str) / $this->len;
         for ($i = 0; $i < $l; $i++) {
-            $s  = substr($str, $i * $this->len, $this->len);
+            $s = substr($str, $i * $this->len, $this->len);
             $tr = [];
             $this->encode(array_values(unpack('N*', $iv)), $tr);
             $s1 = pack('N*', ...$tr);
             $s1 = $s1 ^ $s;
-            $iv = $this->add($iv);
-            $r  .= $s1;
+            $iv = $this->increaseCounter($iv);
+            $r .= $s1;
         }
         return $r;
     }
 
 
     /**
-     * @param string $str 加密字符串
-     * @param string $iv 初始化字符串16位
+     * @param string $str 需加密的数据
+     * @param string $iv 初始向量
      * @return string
-     * @throws \Exception
      */
     public function enDataOfb($str, $iv)
     {
         $this->ck16($iv);
         $r = '';
-        $this->dd($str);
         $l = strlen($str) / $this->len;
         for ($i = 0; $i < $l; $i++) {
-            $s  = substr($str, $i * $this->len, $this->len);
+            $s = substr($str, $i * $this->len, $this->len);
             $tr = [];
             $this->encode(array_values(unpack('N*', $iv)), $tr);
             $iv = pack('N*', ...$tr);
             $s1 = $s ^ $iv;
-            $r  .= $s1;
+            $r .= $s1;
         }
         return $r;
     }
 
     /**
-     * @param string $str 加密字符串
-     * @param string $iv 初始化字符串16位
+     * @param string $str 需解密的数据
+     * @param string $iv 初始向量
      * @return string
-     * @throws \Exception
      */
     public function deDataOfb($str, $iv)
     {
@@ -158,109 +141,99 @@ class Sm4
     }
 
     /**
-     * @param string $str 加密字符串
-     * @param string $iv 初始化字符串16位
+     * @param string $str 需解密的数据
+     * @param string $iv 初始向量
      * @return string
-     * @throws \Exception
      */
     public function deDataCfb($str, $iv)
     {
         $this->ck16($iv);
         $r = '';
-        $this->dd($str);
         $l = strlen($str) / $this->len;
         for ($i = 0; $i < $l; $i++) {
-            $s  = substr($str, $i * $this->len, $this->len);
+            $s = substr($str, $i * $this->len, $this->len);
             $tr = [];
             $this->encode(array_values(unpack('N*', $iv)), $tr);
             $s1 = pack('N*', ...$tr);
             $s1 = $s ^ $s1;
             $iv = $s;
-            $r  .= $s1;
+            $r .= $s1;
         }
         return $r;
     }
 
     /**
-     * @param string $str 加密字符串
-     * @param string $iv 初始化字符串16位
+     * @param string $str 需加密的数据
+     * @param string $iv 初始向量
      * @return string
-     * @throws \Exception
      */
     public function enDataCfb($str, $iv)
     {
         $this->ck16($iv);
         $r = '';
-        $this->dd($str);
         $l = strlen($str) / $this->len;
         for ($i = 0; $i < $l; $i++) {
-            $s  = substr($str, $i * $this->len, $this->len);
+            $s = substr($str, $i * $this->len, $this->len);
             $tr = [];
             $this->encode(array_values(unpack('N*', $iv)), $tr);
             $s1 = pack('N*', ...$tr);
             $iv = $s ^ $s1;
-            $r  .= $iv;
+            $r .= $iv;
         }
         return $r;
     }
 
 
     /**
-     * @param string $str 加密字符串
-     * @param string $iv 初始化字符串16位
+     * @param string $str 需加密的数据
+     * @param string $iv 初始向量
      * @return string
-     * @throws \Exception
      */
     public function enDataCbc($str, $iv)
     {
         $this->ck16($iv);
         $r = '';
-        $this->dd($str);
         $l = strlen($str) / $this->len;
         for ($i = 0; $i < $l; $i++) {
-            $s  = substr($str, $i * $this->len, $this->len);
-            $s  = $iv ^ $s;
+            $s = substr($str, $i * $this->len, $this->len);
+            $s = $iv ^ $s;
             $tr = [];
             $this->encode(array_values(unpack('N*', $s)), $tr);
             $iv = pack('N*', ...$tr);
-            $r  .= $iv;
+            $r .= $iv;
         }
         return $r;
     }
 
     /**
-     * @param string $str 加密字符串
-     * @param string $iv 初始化字符串16位
+     * @param string $str 需解密的数据
+     * @param string $iv 初始向量
      * @return string
-     * @throws \Exception
      */
     public function deDataCbc($str, $iv)
     {
         $this->ck16($iv);
         $r = '';
-        $this->dd($str);
         $l = strlen($str) / $this->len;
         for ($i = 0; $i < $l; $i++) {
-            $s  = substr($str, $i * $this->len, $this->len);
+            $s = substr($str, $i * $this->len, $this->len);
             $tr = [];
             $this->decode(array_values(unpack('N*', $s)), $tr);
             $s1 = pack('N*', ...$tr);
             $s1 = $iv ^ $s1;
             $iv = $s;
-            $r  .= $s1;
+            $r .= $s1;
         }
         return $r;
     }
 
-
     /**
-     * @param string $str 加密字符串
+     * @param string $str 需加密的数据
      * @return string
      */
     public function enDataEcb($str)
     {
         $r = [];
-        $this->dd($str);
         $ar = unpack('N*', $str);
         do {
             $this->encode([current($ar), next($ar), next($ar), next($ar)], $r);
@@ -269,13 +242,12 @@ class Sm4
     }
 
     /**
-     * @param string $str 解密字符串
+     * @param string $str 需解密的数据
      * @return string
      */
     public function deDataEcb($str)
     {
         $r = [];
-        $this->dd($str);
         $ar = unpack('N*', $str);
         do {
             $this->decode([current($ar), next($ar), next($ar), next($ar)], $r);
@@ -345,6 +317,4 @@ class Sm4
         $b = $this->s($n);
         return $b ^ $this->lm($b, 13) ^ $this->lm($b, 23);
     }
-
-
 }

@@ -1,6 +1,9 @@
 <?php
 namespace Lpilp\Splsm2\smecc\SPLSM2;
 
+use GMP;
+use RuntimeException;
+
 /**
  * from https://github.com/lat751608899/sm2/blob/main/src/Point.php
  * @author zlq <751608899@qq.com>
@@ -13,7 +16,7 @@ class Sm2Point
     protected $x;
     protected $y;
 
-    public function __construct(\GMP $x, \GMP $y)
+    public function __construct(GMP $x, GMP $y)
     {
         $this->x = $x;
         $this->y = $y;
@@ -22,12 +25,11 @@ class Sm2Point
 
     protected function init()
     {
-
         $eccParams = Sm2Ecc::get_params();
-        $this->eccParams=  $eccParams;
+        $this->eccParams = $eccParams;
     }
 
-    public function mul(\GMP $n, $isBase = true)
+    public function mul(GMP $n, $isBase = true)
     {
         $zero = gmp_init(0, 10);
         $n = gmp_mod($n, $this->eccParams['p']);
@@ -35,7 +37,7 @@ class Sm2Point
             return $this->getInfinity();
         }
         $p = $isBase ? new self($this->eccParams['gx'], $this->eccParams['gy']) : clone $this;
-        /** @var Point[] $r */
+        /** @var Sm2Point[] $r */
         $r = [
             $this->getInfinity(), // Q
             $p// P
@@ -44,7 +46,7 @@ class Sm2Point
         $n = strrev(str_pad($base, $this->eccParams['size'], '0', STR_PAD_LEFT));
         for ($i = 0; $i < $this->eccParams['size']; $i++) {
             $j = $n[$i];
-            if($j == 1){
+            if ($j == 1) {
                 $r[0] = $r[0]->add($r[1]); // r0 + r1 => p + 0 = p
             }
             $r[1] = $r[1]->getDouble();
@@ -79,7 +81,7 @@ class Sm2Point
             gmp_sub($addend->getX(), $this->x)  // x2 - x1
         );
         // λ² - x1 - x2
-        $xR =  $this->subMod(gmp_sub(gmp_pow($slope, 2), $this->x), $addend->getX());
+        $xR = $this->subMod(gmp_sub(gmp_pow($slope, 2), $this->x), $addend->getX());
         // (λ(x1 - x3)-y1)
         $yR = $this->subMod(gmp_mul($slope, gmp_sub($this->x, $xR)), $this->y);
 
@@ -110,11 +112,11 @@ class Sm2Point
 
     public function getInfinity()
     {
-        return new self(gmp_init(0,10), gmp_init(0,10));
+        return new self(gmp_init(0, 10), gmp_init(0, 10));
     }
 
     /**
-     * @return \GMP
+     * @return GMP
      */
     public function getX()
     {
@@ -122,7 +124,7 @@ class Sm2Point
     }
 
     /**
-     * @return \GMP
+     * @return GMP
      */
     public function getY()
     {
@@ -131,20 +133,20 @@ class Sm2Point
 
     public function isInfinity()
     {
-        return gmp_cmp($this->x, gmp_init(0,10)) === 0
-            && gmp_cmp($this->y, gmp_init(0,10)) === 0;
+        return gmp_cmp($this->x, gmp_init(0, 10)) === 0
+            && gmp_cmp($this->y, gmp_init(0, 10)) === 0;
     }
 
     /**
      * // k ≡ (x/y) (mod n) => ky ≡ x (mod n) => k y/x ≡ 1 (mod n)
-     * @param $x
-     * @param $y
-     * @param null $n
-     * @return \GMP|resource
+     * @param GMP $x
+     * @param GMP $y
+     * @param GMP $n
+     * @return GMP
      */
     protected function divMod($x, $y, $n = null)
     {
-        $n = $n?:$this->eccParams['p'];
+        $n = $n ?: $this->eccParams['p'];
         // y k ≡ 1 (mod n) => k ≡ 1/y (mod n)
         $k = gmp_invert($y, $n);
         // kx ≡ x/y (mod n)
@@ -155,10 +157,10 @@ class Sm2Point
 
     protected function subMod($x, $y, $n = null)
     {
-       return gmp_mod(gmp_sub($x, $y), $n?:$this->eccParams['p']);
+        return gmp_mod(gmp_sub($x, $y), $n ?: $this->eccParams['p']);
     }
 
-    public function contains(\GMP $x, \GMP $y)
+    public function contains(GMP $x, GMP $y)
     {
         $eq_zero = gmp_cmp(
             $this->subMod(
@@ -179,8 +181,8 @@ class Sm2Point
 
     public function checkOnLine()
     {
-        if($this->contains($this->x, $this->y) !== 0){
-            throw new \Exception('Invalid point');
+        if ($this->contains($this->x, $this->y) !== 0) {
+            throw new RuntimeException('Invalid point');
         }
 
         return true;
