@@ -1,7 +1,6 @@
 <?php
 /**
  * @author lpilp <lpilp@126.com>
- * @author  wx: xiaopz129
  */
 namespace Lpilp\Splsm2\smecc\SPLSM2;
 
