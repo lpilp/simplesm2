@@ -249,12 +249,21 @@ class SimpleSm2
             $y2 = pack('H*', str_pad($y2, 64, 0, STR_PAD_LEFT));
             $t = $this->kdf($x2 . $y2, strlen($data));
         }
-        $c2 = gmp_xor(gmp_init($t, 16), $this->str2gmp($data));
-        $c2 = $this->decHex($c2, strlen($data) * 2);
+        // 如果字符太长的话，可能会消耗大量内存影响性能，换成普通的xor算法
+        // $c2 = gmp_xor(gmp_init($t, 16), $this->str2gmp($data));
+        // $c2 = $this->decHex($c2, strlen($data) * 2);
+        $c2 = $this->_do_xor(hex2bin($t),$data);
         $c3 = $this->hash_sm3($x2 . $data . $y2);
         return array($c1, $c3, $c2);
     }
-
+    protected function _do_xor($str1,$str2){
+        $length = strlen($str1);
+        $result = array();
+        for ($i = 0; $i < $length; $i++) {
+            $result []= chr(ord($str1[$i]) ^ ord($str2[$i]));
+        }
+        return bin2hex(implode('',$result));
+    }
     /**
      *
      * @param string $prikey hex
@@ -292,7 +301,9 @@ class SimpleSm2
         $y2 = pack('H*', str_pad($y2, 64, 0, STR_PAD_LEFT));
         $len = strlen($c2);
         $t = $this->kdf($x2 . $y2, $len / 2);  // 转成16进制后 字符长度要除以2        
-        $m1 = gmp_strval(gmp_xor(gmp_init($t, 16), gmp_init($c2, 16)), 16);
+        // $m1 = gmp_strval(gmp_xor(gmp_init($t, 16), gmp_init($c2, 16)), 16);
+
+        $m1 = $this->_do_xor(hex2bin($t),hex2bin($c2));
         $m1 = pack("H*", $m1);
         $u = $this->hash_sm3($x2 . $m1 . $y2);
 
