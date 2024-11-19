@@ -320,7 +320,9 @@ class SimpleSm2
         $ct = 1;
         $j = ceil($klen / 32);
         for ($i = 0; $i < $j; $i++) {
-            $ctStr = str_pad(chr($ct), 4, chr(0), STR_PAD_LEFT);
+            // $ctStr = str_pad(chr($ct), 4, chr(0), STR_PAD_LEFT); //这个256个块以内是正确的，多的后就不正确了
+            $hexCt = dechex($ct);
+            $ctStr = hex2bin(str_pad($hexCt, 8, '0', STR_PAD_LEFT));
             $hex = $this->hash_sm3($z . $ctStr);
             if ($i + 1 == $j && $klen % 32 != 0) {  // 最后一个 且 $klen/$v 不是整数
                 $res .= substr($hex, 0, ($klen % 32) * 2); // 16进制比byte长度少一半 要乘2
@@ -329,7 +331,7 @@ class SimpleSm2
             }
             $ct++;
         }
-
+        // var_dump($res);die();
         return $res;
     }
 
