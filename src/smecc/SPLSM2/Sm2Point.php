@@ -33,7 +33,7 @@ class Sm2Point
     {
         $zero = gmp_init(0, 10);
         $n = gmp_mod($n, $this->eccParams['p']);
-        if (gmp_cmp($n, $zero) === 0) {
+        if ($this->cmp($n, $zero) === 0) {
             return $this->getInfinity();
         }
         $p = $isBase ? new self($this->eccParams['gx'], $this->eccParams['gy']) : clone $this;
@@ -67,9 +67,9 @@ class Sm2Point
         }
 
         // x 相等
-        if (gmp_cmp($addend->getX(), $this->x) === 0) {
+        if ($this->cmp($addend->getX(), $this->x) === 0) {
             // y 也相等 = 倍点
-            if (gmp_cmp($addend->getY(), $this->y) === 0) {
+            if ($this->cmp($addend->getY(), $this->y) === 0) {
                 return $this->getDouble();
             } else { // y 不相等 无穷远点
                 return $this->getInfinity();
@@ -133,8 +133,8 @@ class Sm2Point
 
     public function isInfinity()
     {
-        return gmp_cmp($this->x, gmp_init(0, 10)) === 0
-            && gmp_cmp($this->y, gmp_init(0, 10)) === 0;
+        return $this->cmp($this->x, gmp_init(0, 10)) === 0
+            && $this->cmp($this->y, gmp_init(0, 10)) === 0;
     }
 
     /**
@@ -162,7 +162,7 @@ class Sm2Point
 
     public function contains(GMP $x, GMP $y)
     {
-        $eq_zero = gmp_cmp(
+        $eq_zero = $this->cmp(
             $this->subMod(
                 gmp_pow($y, 2),
                 gmp_add(
@@ -187,4 +187,108 @@ class Sm2Point
 
         return true;
     }
+    public function cmp2(GMP $a, GMP $b){
+        return gmp_cmp($a, $b);
+    }
+    /**
+     * Compare two GMP objects, without timing leaks.
+     *
+     * @param GMP $first
+     * @param GMP $other
+     * @return int -1 if $first < $other
+     *              0 if $first === $other
+     *              1 if $first > $other
+     */
+    public function cmp(
+        GMP $first,
+        GMP $other
+    ): int {
+        /**
+         * @var string $left
+         * @var string $right
+         * @var int $length
+         */
+        list($left, $right, $length) = $this->normalizeLengths($first, $other);
+
+        $first_sign = gmp_sign($first);
+        $other_sign = gmp_sign($other);
+        list($gt, $eq) = $this->compareSigns($first_sign, $other_sign);
+
+        for ($i = 0; $i < $length; ++$i) {
+            $gt |= (($this->ord($right[$i]) - $this->ord($left[$i])) >> 8) & $eq;
+            $eq &= (($this->ord($right[$i]) ^ $this->ord($left[$i])) - 1) >> 8;
+        }
+        return ($gt + $gt + $eq) - 1;
+    }
+    /**
+     * Normalize the lengths of two input numbers.
+     *
+     * @param GMP $a
+     * @param GMP $b
+     * @return array<string|int, string|int>
+     */
+    public function normalizeLengths(
+        GMP $a,
+        GMP $b
+    ): array {
+        $a_hex = gmp_strval(gmp_abs($a), 16);
+        $b_hex = gmp_strval(gmp_abs($b), 16);
+        $length = max(strlen($a_hex), strlen($b_hex));
+        $length += $length & 1;
+
+        $left = hex2bin(str_pad($a_hex, $length, '0', STR_PAD_LEFT));
+        $right = hex2bin(str_pad($b_hex, $length, '0', STR_PAD_LEFT));
+        $length >>= 1;
+        return [$left, $right, $length];
+    }
+    /**
+     * Compare signs. Returns [$gt, $eq].
+     *
+     * Sets $gt to 1 if $first > $other.
+     * Sets $eq to1 if $first === $other.
+     *
+     * See {@link cmp()} for usage.
+     *
+     * | first | other | gt | eq |
+     * |-------|-------|----|----|
+     * |    -1 |    -1 |  0 |  1 |
+     * |    -1 |     0 |  0 |  0 |
+     * |    -1 |     1 |  0 |  0 |
+     * |     0 |    -1 |  1 |  0 |
+     * |     0 |     0 |  0 |  1 |
+     * |     0 |     1 |  1 |  0 |
+     * |     1 |    -1 |  1 |  0 |
+     * |     1 |     0 |  1 |  0 |
+     * |     1 |     1 |  0 |  1 |
+     *
+     * @param int $first_sign
+     * @param int $other_sign
+     * @return int[]
+     */
+    public function compareSigns(
+        int $first_sign,
+        int $other_sign
+    ): array {
+        // Coerce to positive (-1, 0, 1) -> (0, 1, 2)
+        ++$first_sign;
+        ++$other_sign;
+        $gt = (($other_sign - $first_sign) >> 2) & 1;
+        $eq = ((($first_sign ^ $other_sign) - 1) >> 2) & 1;
+        return [$gt, $eq];
+    }
+
+    /**
+     * Get an unsigned integer for the character in the provided string at index 0.
+     *
+     * @param string $chr
+     * @return int
+     */
+    public function ord(
+        string $chr
+    ): int {
+        // return (int) unpack('C', $chr)[1];
+        $packArr = unpack('C', $chr);
+        return (int) $packArr[1];
+    }
+    
 }
