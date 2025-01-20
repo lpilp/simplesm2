@@ -9,6 +9,7 @@ use RuntimeException;
  * @author zlq <751608899@qq.com>
  * modify by lpilp
  * point 类 ，使用zlq童鞋 修改至 ECC的 point 类 Mdanter\Ecc\Primitives\Point 
+ * 由于php-ecc有time-leak的bug, 使用修复了该 bug paragonie/ecc(fork于 ECC, 修复了time-leak) library 中的point类的相关函数
  */
 class Sm2Point
 {
