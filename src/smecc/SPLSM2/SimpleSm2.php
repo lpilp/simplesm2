@@ -424,16 +424,16 @@ class SimpleSm2
         } else if ($len != 128) {
             throw new RuntimeException('bad pulickey');
         }
-        $px = gmp_init(substr($publicKey, 0, 64), 16);
-        $py = gmp_init(substr($publicKey, 64, 64), 16);
+        $px = substr($publicKey, 0, 64);
+        $py = substr($publicKey, -64);
         $zStr = $this->_get_entla($userId);
         $zStr .= $userId;
         $zStr .= hex2bin(gmp_strval($this->a, 16));
         $zStr .= hex2bin(gmp_strval($this->b, 16));
         $zStr .= hex2bin(gmp_strval($this->gx, 16));
         $zStr .= hex2bin(gmp_strval($this->gy, 16));
-        $zStr .= hex2bin(gmp_strval($px, 16));
-        $zStr .= hex2bin(gmp_strval($py, 16));
+        $zStr .= hex2bin($px);
+        $zStr .= hex2bin($py);
         $hashStr = $this->hash_sm3($zStr);
         $hash = $this->hash_sm3(hex2bin($hashStr) . $document);
         return $hash;
@@ -482,7 +482,9 @@ class SimpleSm2
 
     protected function _gmp_to_bin($gmp)
     {
-        return hex2bin(gmp_strval($gmp, 16));
+        $hex = gmp_strval($gmp, 16);
+        $hex = str_pad($hex, 64, '0', STR_PAD_LEFT);
+        return hex2bin($hex);
     }
 
     public function set_private_key($privateKey)
